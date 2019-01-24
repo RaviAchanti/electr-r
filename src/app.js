@@ -14,7 +14,7 @@ let includeMic = false
 
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelector('#record-desktop').addEventListener('click', recordDesktop)  
-  document.querySelector('#play-video').addEventListener('click', playVideo)
+//document.querySelector('#play-video').addEventListener('click', playVideo)
   document.querySelector('#micro-audio').addEventListener('click', microAudioCheck)
   // document.querySelector('#system-audio').addEventListener('click', sysAudioCheck)
   document.querySelector('#record-stop').addEventListener('click', stopRecording)
@@ -23,12 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 
 const playVideo = () => {
-  remote.dialog.showOpenDialog({properties: ['openFile']}, (filename) => {
-    console.log(filename)
-    let video = document.querySelector('video')
-    video.muted = false
-    video.src = filename
-  })
+  //remote.dialog.showOpenDialog({properties: ['openFile']}, (filename) => {
+  //  console.log(filename)
+  //  let video = document.querySelector('video')
+  //  video.muted = false
+  //  video.src = filename
+ // })
 }
 
 const disableButtons = () => {
@@ -50,8 +50,8 @@ const microAudioCheck = () => {
   // document.querySelector('#system-audio').checked = false
 
   // Mute video so we don't play loopback audio.
-  var video = document.querySelector('video')
-  video.muted = true
+  //var video = document.querySelector('video')
+  //video.muted = true
   includeMic = !includeMic
   if(includeMic)
     document.querySelector('#micro-audio-btn').classList.add('active');
@@ -66,8 +66,8 @@ const microAudioCheck = () => {
 }
 
 const cleanRecord = () => {
-  let video = document.querySelector('video');
-  video.controls = false;
+ // let video = document.querySelector('video');
+//  video.controls = false;
   drecordedChunks = []
   mrecordedChunks = []  
   numRecordedChunks = 0
@@ -101,13 +101,12 @@ const recorderOnDeskDataAvailable = (event) => {
 }
 
 
-const stopRecording = () => {
-  stopDesktopRecording();
-  stopMicroPhoneRecording();
+const stopRecording = () => { 
   enableButtons()
   document.querySelector('#play-button').hidden = false
   document.querySelector('#download-button').hidden = false
-
+  stopDesktopRecording();
+  stopMicroPhoneRecording();
 }
 
 const stopDesktopRecording = () => {
@@ -124,11 +123,11 @@ const stopMicroPhoneRecording = () => {
 
 const play = () => {
   // Unmute video.
-  let video = document.querySelector('video')
-  video.controls = true;
-  video.muted = false
-  let blob = new Blob(recordedChunks, {type: 'video/webm'})
-  video.src = window.URL.createObjectURL(blob)
+  //let video = document.querySelector('video')
+ // video.controls = true;
+ // video.muted = false
+ // let blob = new Blob(recordedChunks, {type: 'video/webm'})
+ // video.src = window.URL.createObjectURL(blob)
 }
 
 const download = () => {
@@ -158,38 +157,16 @@ function saveBlob(blob) {
 const ddownload = () => {
   let blob = new Blob(drecordedChunks, {type: 'video/webm'})
   saveBlob(blob);
-  // let url = URL.createObjectURL(blob)
-  // let a = document.createElement('a')
-  // document.body.appendChild(a)
-  // a.style = 'display: none'
-  // a.href = url
-  // a.download = 'electron-screen-recorder-d.webm'
-  // a.click()
-  // setTimeout(function () {
-  //   document.body.removeChild(a)
-  //   window.URL.revokeObjectURL(url)
-  // }, 100)
 }
 
 const mdownload = () => {
   let blob = new Blob(mrecordedChunks, {type: 'video/webm'})
   saveBlob(blob);
-  // let url = URL.createObjectURL(blob)
-  // let a = document.createElement('a')
-  // document.body.appendChild(a)
-  // a.style = 'display: none'
-  // a.href = url
-  // a.download = 'electron-screen-recorder-m.webm'
-  // a.click()
-  // setTimeout(function () {
-  //   document.body.removeChild(a)
-  //   window.URL.revokeObjectURL(url)
-  // }, 100)
 }
 
 const getMicrophoneStream = (stream) => {
-  let video = document.querySelector('video')
-  video.src = URL.createObjectURL(stream)
+  //let video = document.querySelector('video')
+  //video.src = URL.createObjectURL(stream)
   mlocalStream = stream
   stream.onended = () => { console.log('Media stream ended.') }
 
@@ -215,8 +192,8 @@ const getMicrophoneStream = (stream) => {
 }
 
 const getMediaStream = (stream) => {
-  let video = document.querySelector('video')
-  video.src = URL.createObjectURL(stream)
+  //let video = document.querySelector('video')
+  //video.src = URL.createObjectURL(stream)
   dlocalStream = stream
   stream.onended = () => { console.log('Media stream ended.') }
 
@@ -267,7 +244,7 @@ const startDesktopRecording = (id) => {
     navigator.webkitGetUserMedia({
       audio: {
         mandatory: {
-            chromeMediaSource: 'system',
+            chromeMediaSource: 'audio',
             chromeMediaSourceId: getMediaStream.id
         }
     },
