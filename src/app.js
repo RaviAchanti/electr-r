@@ -204,7 +204,12 @@ const onAccessApproved = (id) => {
   }
   console.log('Window ID: ', id)
   navigator.webkitGetUserMedia({
-    audio: false,
+    audio: {
+      mandatory: {
+          chromeMediaSource: 'system',
+          chromeMediaSourceId: getMediaStream.id
+      }
+  },
     video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: id,
       maxWidth: window.screen.width, maxHeight: window.screen.height } }
   }, getMediaStream, getUserMediaError)
