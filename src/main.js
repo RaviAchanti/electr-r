@@ -1,4 +1,5 @@
 const {app, BrowserWindow, ipcMain} = require('electron')
+const fs = require('fs-extra')
 
 let mainWindow
 let pickerDialog
@@ -29,4 +30,14 @@ ipcMain.on('show-picker', (event, options) => {
 ipcMain.on('source-id-selected', (event, sourceId) => {
   pickerDialog.hide()
   mainWindow.webContents.send('source-id-selected', sourceId)
+})
+
+ipcMain.on('SAVE_FILE', (event, path, buffer) => {
+  fs.outputFile(path, buffer, err => {    
+      if (err) {
+          event.sender.send('ERROR', err.message)
+      } else {          
+          event.sender.send('SAVED_FILE', path)          
+      }
+  })
 })

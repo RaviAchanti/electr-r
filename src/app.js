@@ -1,18 +1,19 @@
 const {desktopCapturer, ipcRenderer, remote} = require('electron')
 const domify = require('domify')
 
-let localStream
+let mlocalStream
+let dlocalStream
 let microAudioStream
-let recordedChunks = []
+let mrecordedChunks = []
+let drecordedChunks = []
 let numRecordedChunks = 0
-let recorder
+let deskToprecorder
+let microphonerecorder
 let includeMic = false
 // let includeSysAudio = false
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelector('#record-desktop').addEventListener('click', recordDesktop)
-  document.querySelector('#record-camera').addEventListener('click', recordCamera)
-  document.querySelector('#record-window').addEventListener('click', recordWindow)
+  document.querySelector('#record-desktop').addEventListener('click', recordDesktop)  
   document.querySelector('#play-video').addEventListener('click', playVideo)
   document.querySelector('#micro-audio').addEventListener('click', microAudioCheck)
   // document.querySelector('#system-audio').addEventListener('click', sysAudioCheck)
@@ -31,18 +32,14 @@ const playVideo = () => {
 }
 
 const disableButtons = () => {
-  document.querySelector('#record-desktop').disabled = true
-  document.querySelector('#record-camera').disabled = true
-  document.querySelector('#record-window').disabled = true
+  document.querySelector('#record-desktop').disabled = true  
   document.querySelector('#record-stop').hidden = false
   document.querySelector('#play-button').hidden = true
   document.querySelector('#download-button').hidden = true
 }
 
 const enableButtons = () => {
-  document.querySelector('#record-desktop').disabled = false
-  document.querySelector('#record-camera').disabled = false
-  document.querySelector('#record-window').disabled = false
+  document.querySelector('#record-desktop').disabled = false  
   document.querySelector('#record-stop').hidden = true
   document.querySelector('#play-button').hidden = true
   document.querySelector('#download-button').hidden = true
@@ -68,29 +65,20 @@ const microAudioCheck = () => {
   }
 }
 
-// function sysAudioCheck () {
-  // // Mute video so we don't play loopback audio
-  // var video = document.querySelector('video')
-  // video.muted = true
-
-  // includeSysAudio = !includeSysAudio
-  // includeMic = false
-  // document.querySelector('#micro-audio').checked = false
-  // console.log('System Audio =', includeSysAudio)
-// };
-
 const cleanRecord = () => {
   let video = document.querySelector('video');
   video.controls = false;
-  recordedChunks = []
+  drecordedChunks = []
+  mrecordedChunks = []  
   numRecordedChunks = 0
 }
 
 ipcRenderer.on('source-id-selected', (event, sourceId) => {
   // Users have cancel the picker dialog.
   if (!sourceId) return
-  console.log(sourceId)
-  onAccessApproved(sourceId)
+  console.log("initiating .. desktop and microphone");
+  startDesktopRecording(sourceId)
+  startMicrophoneRecording(sourceId)
 })
 
 const recordDesktop = () => {
@@ -98,33 +86,40 @@ const recordDesktop = () => {
   ipcRenderer.send('show-picker', { types: ['screen'] })
 }
 
-const recordWindow = () => {
-  cleanRecord()
-  ipcRenderer.send('show-picker', { types: ['window'] })
-}
-
-const recordCamera = () => {
-  cleanRecord()
-  navigator.webkitGetUserMedia({
-    audio: false,
-    video: { mandatory: { minWidth: 1280, minHeight: 720 } }
-  }, getMediaStream, getUserMediaError)
-}
-
-const recorderOnDataAvailable = (event) => {
+const recorderOnMicDataAvailable = (event) => {
   if (event.data && event.data.size > 0) {
-    recordedChunks.push(event.data)
+    mrecordedChunks.push(event.data)
     numRecordedChunks += event.data.byteLength
   }
 }
 
+const recorderOnDeskDataAvailable = (event) => {
+  if (event.data && event.data.size > 0) {
+    drecordedChunks.push(event.data)
+    numRecordedChunks += event.data.byteLength
+  }
+}
+
+
 const stopRecording = () => {
-  console.log('Stopping record and starting download')
+  stopDesktopRecording();
+  stopMicroPhoneRecording();
   enableButtons()
   document.querySelector('#play-button').hidden = false
   document.querySelector('#download-button').hidden = false
-  recorder.stop()
-  localStream.getVideoTracks()[0].stop()
+
+}
+
+const stopDesktopRecording = () => {
+  console.log('Stopping record and starting download')  
+  deskToprecorder.stop()
+  dlocalStream.getVideoTracks()[0].stop()
+}
+
+const stopMicroPhoneRecording = () => {
+  console.log('Stopping record and starting download')
+  microphonerecorder.stop()
+  mlocalStream.getVideoTracks()[0].stop()
 }
 
 const play = () => {
@@ -137,53 +132,107 @@ const play = () => {
 }
 
 const download = () => {
-  let blob = new Blob(recordedChunks, {type: 'video/webm'})
-  let url = URL.createObjectURL(blob)
-  let a = document.createElement('a')
-  document.body.appendChild(a)
-  a.style = 'display: none'
-  a.href = url
-  a.download = 'electron-screen-recorder.webm'
-  a.click()
-  setTimeout(function () {
-    document.body.removeChild(a)
-    window.URL.revokeObjectURL(url)
-  }, 100)
+  ddownload();
+  mdownload();
+}
+
+ipcRenderer.on('SAVED_FILE', (event, path) => {
+  console.log("Saved file " + path)
+})
+
+function saveBlob(blob) {
+  let reader = new FileReader()
+  let file = URL.createObjectURL(blob).toString();
+  let fileName = "./" + file.substring(14,file.length)
+
+  reader.onload = function() {
+      if (reader.readyState == 2) {
+          var buffer = new Buffer(reader.result)
+          ipcRenderer.send('SAVE_FILE', fileName, buffer)
+          console.log(`Saving ${JSON.stringify({ fileName, size: blob.size })}`)
+      }
+  }
+  reader.readAsArrayBuffer(blob)
+}
+
+const ddownload = () => {
+  let blob = new Blob(drecordedChunks, {type: 'video/webm'})
+  saveBlob(blob);
+  // let url = URL.createObjectURL(blob)
+  // let a = document.createElement('a')
+  // document.body.appendChild(a)
+  // a.style = 'display: none'
+  // a.href = url
+  // a.download = 'electron-screen-recorder-d.webm'
+  // a.click()
+  // setTimeout(function () {
+  //   document.body.removeChild(a)
+  //   window.URL.revokeObjectURL(url)
+  // }, 100)
+}
+
+const mdownload = () => {
+  let blob = new Blob(mrecordedChunks, {type: 'video/webm'})
+  saveBlob(blob);
+  // let url = URL.createObjectURL(blob)
+  // let a = document.createElement('a')
+  // document.body.appendChild(a)
+  // a.style = 'display: none'
+  // a.href = url
+  // a.download = 'electron-screen-recorder-m.webm'
+  // a.click()
+  // setTimeout(function () {
+  //   document.body.removeChild(a)
+  //   window.URL.revokeObjectURL(url)
+  // }, 100)
+}
+
+const getMicrophoneStream = (stream) => {
+  let video = document.querySelector('video')
+  video.src = URL.createObjectURL(stream)
+  mlocalStream = stream
+  stream.onended = () => { console.log('Media stream ended.') }
+
+  let videoTracks = mlocalStream.getVideoTracks()
+
+  if (includeMic) {
+    console.log('Adding audio track.')
+    let audioTracks = microAudioStream.getAudioTracks()
+    mlocalStream.addTrack(audioTracks[0])
+  }
+  try {
+    console.log('Start recording the microphonerecorder stream.')
+    microphonerecorder = new MediaRecorder(stream)
+  } catch (e) {
+    console.assert(false, 'Exception while creating microphonerecorder MediaRecorder: ' + e)
+    return
+  }
+  microphonerecorder.ondataavailable = recorderOnMicDataAvailable
+  microphonerecorder.onstop = () => { console.log('microphonerecorder recorderOnStop fired') }
+  microphonerecorder.start()
+  console.log('microphonerecorder is started.')
+  disableButtons()
 }
 
 const getMediaStream = (stream) => {
   let video = document.querySelector('video')
   video.src = URL.createObjectURL(stream)
-  localStream = stream
+  dlocalStream = stream
   stream.onended = () => { console.log('Media stream ended.') }
 
-  let videoTracks = localStream.getVideoTracks()
+  let videoTracks = dlocalStream.getVideoTracks()
 
-  if (includeMic) {
-    console.log('Adding audio track.')
-    let audioTracks = microAudioStream.getAudioTracks()
-    localStream.addTrack(audioTracks[0])
-  }
-  // if (includeSysAudio) {
-    // console.log('Adding system audio track.')
-    // let audioTracks = stream.getoAudioTracks()
-    // if (audioTracks.length < 1) {
-      // console.log('No audio track in screen stream.')
-    // }
-  // } else {
-    // console.log('Not adding audio track.')
-  // }
   try {
-    console.log('Start recording the stream.')
-    recorder = new MediaRecorder(stream)
+    console.log('Start recording the deskToprecorder stream.')
+    deskToprecorder = new MediaRecorder(stream)
   } catch (e) {
     console.assert(false, 'Exception while creating MediaRecorder: ' + e)
     return
   }
-  recorder.ondataavailable = recorderOnDataAvailable
-  recorder.onstop = () => { console.log('recorderOnStop fired') }
-  recorder.start()
-  console.log('Recorder is started.')
+  deskToprecorder.ondataavailable = recorderOnDeskDataAvailable
+  deskToprecorder.onstop = () => { console.log('deskToprecorder recorderOnStop fired') }
+  deskToprecorder.start()
+  console.log('deskToprecorder is started.')
   disableButtons()
 }
 
@@ -197,20 +246,33 @@ const getUserMediaError = () => {
   console.log('getUserMedia() failed.')
 }
 
-const onAccessApproved = (id) => {
+const startMicrophoneRecording = (id) => {
   if (!id) {
     console.log('Access rejected.')
     return
-  }
-  console.log('Window ID: ', id)
-  navigator.webkitGetUserMedia({
-    audio: {
-      mandatory: {
-          chromeMediaSource: 'system',
-          chromeMediaSourceId: getMediaStream.id
-      }
-  },
-    video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: id,
-      maxWidth: window.screen.width, maxHeight: window.screen.height } }
-  }, getMediaStream, getUserMediaError)
+  }  
+    navigator.webkitGetUserMedia({
+      audio: false,
+      video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: id,
+        maxWidth: window.screen.width, maxHeight: window.screen.height } }
+    }, getMicrophoneStream, getUserMediaError)
 }
+
+const startDesktopRecording = (id) => {
+  if (!id) {
+    console.log('Access rejected.')
+    return
+  }  
+
+    navigator.webkitGetUserMedia({
+      audio: {
+        mandatory: {
+            chromeMediaSource: 'system',
+            chromeMediaSourceId: getMediaStream.id
+        }
+    },
+      video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: id,
+        maxWidth: window.screen.width, maxHeight: window.screen.height } }
+    }, getMediaStream, getUserMediaError)
+} 
+
