@@ -38,7 +38,18 @@ ipcMain.on('SAVE_FILE', (event, path, buffer) => {
           event.sender.send('ERROR', err.message)
       } else {          
           convertToWav(path, path + "tmp.wav", function(res){
-
+            console.log(path)
+            console.log(res)
+            if (fs.existsSync(path)) {
+              fs.unlink(path, (err) => {
+                if (err) {
+                    alert("An error ocurred updating the file" + err.message);
+                    console.log(err);
+                    return;
+                }
+                console.log("File succesfully deleted");
+              });
+            }
           });
           event.sender.send('SAVED_FILE', path)          
       }
