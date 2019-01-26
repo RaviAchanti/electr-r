@@ -1,6 +1,6 @@
 const {app, BrowserWindow, ipcMain} = require('electron')
 const fs = require('fs-extra')
-
+var convertToWav = require('./video-to-audio')
 let mainWindow
 let pickerDialog
 
@@ -37,6 +37,9 @@ ipcMain.on('SAVE_FILE', (event, path, buffer) => {
       if (err) {
           event.sender.send('ERROR', err.message)
       } else {          
+          convertToWav(path, path + "tmp.wav", function(res){
+
+          });
           event.sender.send('SAVED_FILE', path)          
       }
   })

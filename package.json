@@ -25,6 +25,8 @@
   "dependencies": {
     "domify": "^1.4.0",
     "electron": "1.7.9",
+    "ffmpeg-static": "^2.4.0",
+    "fluent-ffmpeg": "^2.1.2",
     "fs-extra": "^7.0.1"
   }
 }

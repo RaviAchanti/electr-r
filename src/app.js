@@ -104,6 +104,8 @@ const stopRecording = () => {
 
 const stopDesktopRecording = () => {
   console.log('Stopping record and starting download')  
+  console.log('d');
+  console.log(dlocalStream);
   deskToprecorder.stop()
   dlocalStream.getVideoTracks()[0].stop()
 }
@@ -111,7 +113,7 @@ const stopDesktopRecording = () => {
 const stopMicroPhoneRecording = () => {
   console.log('Stopping record and starting download')
   microphonerecorder.stop()
-  mlocalStream.getVideoTracks()[0].stop()
+  mlocalStream.getAudioTracks()[0].stop()
 }
 
 const play = () => {
@@ -153,7 +155,7 @@ const ddownload = () => {
 }
 
 const mdownload = () => {
-  let blob = new Blob(mrecordedChunks, {type: 'video/webm'})
+  let blob = new Blob(mrecordedChunks, {type: 'audio/webm'})
   saveBlob(blob);
 }
 
@@ -172,6 +174,7 @@ const getMicrophoneStream = (stream) => {
   try {
     console.log('Start recording the microphonerecorder stream.')
     microphonerecorder = new MediaRecorder(stream)
+    microphonerecorder.mimeType = 'audio/webm';
   } catch (e) {
     console.assert(false, 'Exception while creating microphonerecorder MediaRecorder: ' + e)
     return
@@ -185,7 +188,10 @@ const getMicrophoneStream = (stream) => {
 
 const getMediaStream = (stream) => {
 
-  dlocalStream = stream
+  dlocalStream = stream 
+  console.log(dlocalStream)
+
+
   stream.onended = () => { console.log('Media stream ended.') }
   try {
     console.log('Start recording the deskToprecorder stream.')
@@ -217,9 +223,8 @@ const startMicrophoneRecording = (id) => {
     return
   }  
     navigator.webkitGetUserMedia({
-      audio: false,
-      video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: id,
-        maxWidth: window.screen.width, maxHeight: window.screen.height } }
+      audio: true,
+      video: false,
     }, getMicrophoneStream, getUserMediaError)
 }
 
@@ -236,8 +241,8 @@ const startDesktopRecording = (id) => {
             chromeMediaSourceId: getMediaStream.id
         }
     },
-      video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: id,
-        maxWidth: window.screen.width, maxHeight: window.screen.height } }
+    video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: id,
+    maxWidth: window.screen.width, maxHeight: window.screen.height } }
     }, getMediaStream, getUserMediaError)
 } 
 
