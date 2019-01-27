@@ -23,12 +23,12 @@ app.on('ready', () => {
 });
 
 ipcMain.on('show-picker', (event, options) => {
-  pickerDialog.show()
+  // pickerDialog.show()
   pickerDialog.webContents.send('get-sources', options)
 })
 
 ipcMain.on('source-id-selected', (event, sourceId) => {
-  pickerDialog.hide()
+  // pickerDialog.hide()
   mainWindow.webContents.send('source-id-selected', sourceId)
 })
 

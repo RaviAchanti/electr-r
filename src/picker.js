@@ -22,14 +22,15 @@ ipcRenderer.on('get-sources', (event, options) => {
     }
     let links = sourcesList.querySelectorAll('a')
     for (let i = 0; i < links.length; ++i) {
-      let closure = (i) => {
-        return (e) => {
-          e.preventDefault()
+      // let closure = (i) => {
+      //   return (e) => {
+          // e.preventDefault()
+          console.log(sources[i].id)
           ipcRenderer.send('source-id-selected', sources[i].id)
           sourcesList.innerHTML = ''
-        }
-      }
-      links[i].onclick = closure(i)
+      //   }
+      // }
+      // links[i].onclick = closure(i)
     }
   })
 })
