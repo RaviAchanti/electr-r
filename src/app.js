@@ -13,13 +13,9 @@ let includeMic = false
 // let includeSysAudio = false
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelector('#record-desktop').addEventListener('click', recordDesktop)  
-  document.querySelector('#play-video').addEventListener('click', playVideo)
-  document.querySelector('#micro-audio').addEventListener('click', microAudioCheck)
-  // document.querySelector('#system-audio').addEventListener('click', sysAudioCheck)
+  document.querySelector('#record-desktop').addEventListener('click', recordDesktop)
+  document.querySelector('#record-pause').addEventListener('click', PauseRecording)
   document.querySelector('#record-stop').addEventListener('click', stopRecording)
-  // document.querySelector('#play-button').addEventListener('click', play)
-  document.querySelector('#download-button').addEventListener('click', download)
 })
 
 const playVideo = () => {
@@ -31,18 +27,26 @@ const playVideo = () => {
   // })
 }
 
+//After play
 const disableButtons = () => {
   document.querySelector('#record-desktop').disabled = true  
+  document.querySelector('#record-pause').hidden = false  
   document.querySelector('#record-stop').hidden = false
-  document.querySelector('#play-button').hidden = true
-  document.querySelector('#download-button').hidden = true
+  document.querySelector('#record-pause').disabled = false
 }
 
+const enableAfterPauseButtons = () => {
+  document.querySelector('#record-desktop').disabled = false  
+  document.querySelector('#record-pause').disabled = true
+  document.querySelector('#record-stop').disabled = false
+}
+
+//After stop
 const enableButtons = () => {
   document.querySelector('#record-desktop').disabled = false  
+  document.querySelector('#record-pause').hidden = true
   document.querySelector('#record-stop').hidden = true
-  document.querySelector('#play-button').hidden = true
-  document.querySelector('#download-button').hidden = true
+
 }
 
 const microAudioCheck = () => {
@@ -59,7 +63,12 @@ const microAudioCheck = () => {
   }
 }
 
+const recordDesktop = () => {
+  ipcRenderer.send('show-picker', { types: ['screen'] })
+}
+
 const cleanRecord = () => {  
+  if ( drecordedChunks != [])
   drecordedChunks = []
   mrecordedChunks = []  
   numRecordedChunks = 0
@@ -73,10 +82,7 @@ ipcRenderer.on('source-id-selected', (event, sourceId) => {
   startMicrophoneRecording(sourceId)
 })
 
-const recordDesktop = () => {
-  cleanRecord()
-  ipcRenderer.send('show-picker', { types: ['screen'] })
-}
+
 
 const recorderOnMicDataAvailable = (event) => {
   if (event.data && event.data.size > 0) {
@@ -93,13 +99,27 @@ const recorderOnDeskDataAvailable = (event) => {
 }
 
 
+const PauseRecording = () => {
+  PauseDesktopRecording();
+  PauseMicroPhoneRecording();
+  enableAfterPauseButtons()
+}
+
+const PauseDesktopRecording = () => {
+  console.log('Pausing record and starting download')  
+  deskToprecorder.pause()
+}
+
+const PauseMicroPhoneRecording = () => {
+  console.log('Pausing record and starting download')
+  microphonerecorder.pause()
+}
+
 const stopRecording = () => {
   stopDesktopRecording();
   stopMicroPhoneRecording();
   enableButtons()
-  document.querySelector('#play-button').hidden = false
-  document.querySelector('#download-button').hidden = false
-
+  download()
 }
 
 const stopDesktopRecording = () => {
@@ -164,7 +184,7 @@ const getMicrophoneStream = (stream) => {
   mlocalStream = stream
   stream.onended = () => { console.log('Media stream ended.') }
 
-  let videoTracks = mlocalStream.getVideoTracks()
+  // let videoTracks = mlocalStream.getVideoTracks()
 
   if (includeMic) {
     console.log('Adding audio track.')
@@ -172,7 +192,9 @@ const getMicrophoneStream = (stream) => {
     mlocalStream.addTrack(audioTracks[0])
   }
   try {
+    console.log(microphonerecorder)
     console.log('Start recording the microphonerecorder stream.')
+    if (!microphonerecorder)
     microphonerecorder = new MediaRecorder(stream)
     microphonerecorder.mimeType = 'audio/webm';
   } catch (e) {
@@ -180,9 +202,18 @@ const getMicrophoneStream = (stream) => {
     return
   }
   microphonerecorder.ondataavailable = recorderOnMicDataAvailable
+  microphonerecorder.onresume = () => { console.log('microphonerecorder on Resumed') }
+  microphonerecorder.onpause = () => { console.log('microphonerecorder Paused') }
   microphonerecorder.onstop = () => { console.log('microphonerecorder recorderOnStop fired') }
-  microphonerecorder.start()
-  console.log('microphonerecorder is started.')
+  if (microphonerecorder.state == "paused")
+  {
+    microphonerecorder.resume()
+    console.log('microphonerecorder Resumed')
+  }
+  else {
+    microphonerecorder.start()
+    console.log('microphonerecorder is started.')
+  }
   disableButtons()
 }
 
@@ -194,16 +225,28 @@ const getMediaStream = (stream) => {
 
   stream.onended = () => { console.log('Media stream ended.') }
   try {
+    console.log(deskToprecorder)
     console.log('Start recording the deskToprecorder stream.')
+    if (!deskToprecorder)
     deskToprecorder = new MediaRecorder(stream)
   } catch (e) {
     console.assert(false, 'Exception while creating MediaRecorder: ' + e)
     return
   }
   deskToprecorder.ondataavailable = recorderOnDeskDataAvailable
+  deskToprecorder.onresume = () => { console.log('deskToprecorder on  resumed') }
+  deskToprecorder.onpause = () => { console.log('deskToprecorder Paused') }
   deskToprecorder.onstop = () => { console.log('deskToprecorder recorderOnStop fired') }
-  deskToprecorder.start()
-  console.log('deskToprecorder is started.')
+
+  if (deskToprecorder.state == "paused"){
+    deskToprecorder.resume()
+    console.log('deskToprecorder resumed')
+  }
+  else
+  {
+    deskToprecorder.start()
+    console.log('deskToprecorder is started.')
+  }
   disableButtons()
 }
 
@@ -237,12 +280,15 @@ const startDesktopRecording = (id) => {
     navigator.webkitGetUserMedia({
       audio: {
         mandatory: {
-            chromeMediaSource: 'system',
+            chromeMediaSource: 'desktop',
             chromeMediaSourceId: getMediaStream.id
         }
-    },
-    video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: id,
-    maxWidth: window.screen.width, maxHeight: window.screen.height } }
-    }, getMediaStream, getUserMediaError)
+    }
+    ,
+      video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: id,
+        maxWidth: 10, maxHeight: 10} }
+ 
+     },
+     getMediaStream, getUserMediaError)
 } 
 
